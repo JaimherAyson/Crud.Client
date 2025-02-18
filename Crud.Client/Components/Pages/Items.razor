@@ -1,0 +1,51 @@
+﻿@page "/items"
+@inject ItemService ItemService
+
+<h3>Items</h3>
+
+@if (items == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr><th>Name</th><th>Quantity</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var item in items)
+            {
+                <tr>
+                    <td>@item.Name</td>
+                    <td>@item.Quantity</td>
+                    <td>
+                        <button @onclick="() => EditItem(item.Id)">Edit</button>
+                        <button @onclick="() => DeleteItem(item.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<button @onclick="ShowAddForm">Add Item</button>
+
+@if (showForm)
+{
+    <input bind="@newItem.Name" placeholder="Name" />
+    <input bind="@newItem.Quantity" placeholder="Quantity" type="number" />
+    <button @onclick="SaveItem">Save</button>
+}
+
+@code {
+    private List<Item>? items;
+    private Item newItem = new();
+    private bool showForm = false;
+
+    protected override async Task OnInitializedAsync() => items = await ItemService.GetItemsAsync();
+
+    private void ShowAddForm() { showForm = true; newItem = new(); }
+    private async Task SaveItem() { await ItemService.CreateItemAsync(newItem); showForm = false; }
+    private async Task DeleteItem(string id) { await ItemService.DeleteItemAsync(id); items = await ItemService.GetItemsAsync(); }
+}
