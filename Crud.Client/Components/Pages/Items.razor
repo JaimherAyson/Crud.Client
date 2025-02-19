@@ -20,7 +20,7 @@ else
                     <td>@item.Name</td>
                     <td>@item.Quantity</td>
                     <td>
-                        <button @onclick="() => EditItem(item.Id)">Edit</button>
+                        <button @onclick="() => EditItem(item)">Edit</button>
                         <button @onclick="() => DeleteItem(item.Id)">Delete</button>
                     </td>
                 </tr>
@@ -33,19 +33,95 @@ else
 
 @if (showForm)
 {
-    <input bind="@newItem.Name" placeholder="Name" />
-    <input bind="@newItem.Quantity" placeholder="Quantity" type="number" />
+    <input id="itemName" name="itemName" bind="@editItem.Name" placeholder="Name" />
+    <input id="itemQuantity" name="itemQuantity" bind="@editItem.Quantity" placeholder="Quantity" type="number" />
+
     <button @onclick="SaveItem">Save</button>
 }
 
 @code {
     private List<Item>? items;
-    private Item newItem = new();
+    private Item editItem = new();
     private bool showForm = false;
 
-    protected override async Task OnInitializedAsync() => items = await ItemService.GetItemsAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Console.WriteLine("Fetching items from API...");
+            items = await ItemService.GetItemsAsync();
+            Console.WriteLine($"Loaded {items?.Count ?? 0} items.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching items: {ex.Message}");
+        }
+    }
 
-    private void ShowAddForm() { showForm = true; newItem = new(); }
-    private async Task SaveItem() { await ItemService.CreateItemAsync(newItem); showForm = false; }
-    private async Task DeleteItem(string id) { await ItemService.DeleteItemAsync(id); items = await ItemService.GetItemsAsync(); }
+    private void ShowAddForm()
+    {
+        Console.WriteLine("Opening Add Item Form...");
+        showForm = true;
+        editItem = new(); // Reset for new item
+    }
+
+    private void EditItem(Item item)
+    {
+        try
+        {
+            Console.WriteLine($"Editing item: {item.Id} - {item.Name}");
+            editItem = new Item
+                {
+                    Id = item.Id,
+                    Name = item.Name,
+                    Quantity = item.Quantity
+                };
+            showForm = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error while editing item: {ex.Message}");
+        }
+    }
+
+    private async Task SaveItem()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(editItem.Id))
+            {
+                Console.WriteLine("Creating a new item...");
+                await ItemService.CreateItemAsync(editItem);
+            }
+            else
+            {
+                Console.WriteLine($"Updating item: {editItem.Id}");
+                await ItemService.UpdateItemAsync(editItem.Id, editItem);
+            }
+
+            Console.WriteLine("Refreshing item list...");
+            items = await ItemService.GetItemsAsync();
+            showForm = false;
+            editItem = new Item(); // Reset after saving
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving item: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteItem(string id)
+    {
+        try
+        {
+            Console.WriteLine($"Deleting item with ID: {id}");
+            await ItemService.DeleteItemAsync(id);
+            items = await ItemService.GetItemsAsync();
+            Console.WriteLine("Item deleted and list refreshed.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting item: {ex.Message}");
+        }
+    }
 }
