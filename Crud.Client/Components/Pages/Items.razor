@@ -1,5 +1,6 @@
 ﻿@page "/items"
-@inject ItemService ItemService
+@inject IHttpClientFactory HttpClientFactory
+@inject HttpClient Http
 
 <h3>Items</h3>
 
@@ -11,7 +12,11 @@ else
 {
     <table class="table">
         <thead>
-            <tr><th>Name</th><th>Quantity</th><th>Actions</th></tr>
+            <tr>
+                <th>Name</th>
+                <th>Quantity</th>
+                <th>Actions</th>
+            </tr>
         </thead>
         <tbody>
             @foreach (var item in items)
@@ -33,55 +38,60 @@ else
 
 @if (showForm)
 {
-    <input id="itemName" name="itemName" bind="@editItem.Name" placeholder="Name" />
-    <input id="itemQuantity" name="itemQuantity" bind="@editItem.Quantity" placeholder="Quantity" type="number" />
+    <div>
+        <input id="itemName" name="itemName" @bind="editItem.Name" placeholder="Name" />
+        <input id="itemQuantity" name="itemQuantity" @bind="editItem.Quantity" placeholder="Quantity" type="number" />
 
-    <button @onclick="SaveItem">Save</button>
+        <button @onclick="SaveItem">Save</button>
+        <button @onclick="CancelEdit">Cancel</button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <p style="color: red;">Error: @errorMessage</p>
 }
 
 @code {
     private List<Item>? items;
     private Item editItem = new();
     private bool showForm = false;
+    private string? errorMessage;
+    private HttpClient? httpClient;
 
     protected override async Task OnInitializedAsync()
     {
+        httpClient = HttpClientFactory.CreateClient("API");
+        await LoadItems();
+    }
+
+    private async Task LoadItems()
+    {
         try
         {
-            Console.WriteLine("Fetching items from API...");
-            items = await ItemService.GetItemsAsync();
-            Console.WriteLine($"Loaded {items?.Count ?? 0} items.");
+            items = await httpClient.GetFromJsonAsync<List<Item>>("api/items");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching items: {ex.Message}");
+            errorMessage = $"Error fetching items: {ex.Message}";
         }
     }
 
     private void ShowAddForm()
     {
-        Console.WriteLine("Opening Add Item Form...");
         showForm = true;
-        editItem = new(); // Reset for new item
+        editItem = new();
     }
 
     private void EditItem(Item item)
     {
-        try
-        {
-            Console.WriteLine($"Editing item: {item.Id} - {item.Name}");
-            editItem = new Item
-                {
-                    Id = item.Id,
-                    Name = item.Name,
-                    Quantity = item.Quantity
-                };
-            showForm = true;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error while editing item: {ex.Message}");
-        }
+        editItem = new Item
+            {
+                Id = item.Id,
+                Name = item.Name,
+                Quantity = item.Quantity
+            };
+        showForm = true;
     }
 
     private async Task SaveItem()
@@ -90,23 +100,22 @@ else
         {
             if (string.IsNullOrEmpty(editItem.Id))
             {
-                Console.WriteLine("Creating a new item...");
-                await ItemService.CreateItemAsync(editItem);
+                var response = await httpClient.PostAsJsonAsync("api/items", editItem);
+                response.EnsureSuccessStatusCode();
             }
             else
             {
-                Console.WriteLine($"Updating item: {editItem.Id}");
-                await ItemService.UpdateItemAsync(editItem.Id, editItem);
+                var response = await httpClient.PutAsJsonAsync($"api/items/{editItem.Id}", editItem);
+                response.EnsureSuccessStatusCode();
             }
 
-            Console.WriteLine("Refreshing item list...");
-            items = await ItemService.GetItemsAsync();
+            await LoadItems();
             showForm = false;
-            editItem = new Item(); // Reset after saving
+            editItem = new();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error saving item: {ex.Message}");
+            errorMessage = $"Error saving item: {ex.Message}";
         }
     }
 
@@ -114,14 +123,19 @@ else
     {
         try
         {
-            Console.WriteLine($"Deleting item with ID: {id}");
-            await ItemService.DeleteItemAsync(id);
-            items = await ItemService.GetItemsAsync();
-            Console.WriteLine("Item deleted and list refreshed.");
+            var response = await httpClient.DeleteAsync($"api/items/{id}");
+            response.EnsureSuccessStatusCode();
+            await LoadItems();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error deleting item: {ex.Message}");
+            errorMessage = $"Error deleting item: {ex.Message}";
         }
+    }
+
+    private void CancelEdit()
+    {
+        showForm = false;
+        editItem = new();
     }
 }

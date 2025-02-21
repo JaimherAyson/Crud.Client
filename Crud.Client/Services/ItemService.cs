@@ -2,25 +2,34 @@
 
 public class ItemService
 {
-    private readonly HttpClient _http;
+    private readonly HttpClient _httpClient;
 
-    public ItemService(HttpClient http)
+    public ItemService(HttpClient httpClient)
     {
-        _http = http;
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     }
 
     public async Task<List<Item>?> GetItemsAsync()
-        => await _http.GetFromJsonAsync<List<Item>>("api/Items");
+        => await _httpClient.GetFromJsonAsync<List<Item>>("api/Items");
 
     public async Task<Item?> GetItemByIdAsync(string id)
-        => await _http.GetFromJsonAsync<Item>($"api/Items/{id}");
+        => await _httpClient.GetFromJsonAsync<Item>($"api/Items/{id}");
 
     public async Task CreateItemAsync(Item item)
-        => await _http.PostAsJsonAsync("api/Items", item);
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/Items", item);
+        response.EnsureSuccessStatusCode(); // Ensures the request was successful
+    }
 
     public async Task UpdateItemAsync(string id, Item item)
-        => await _http.PutAsJsonAsync($"api/Items/{id}", item);
+    {
+        var response = await _httpClient.PutAsJsonAsync($"api/Items/{id}", item);
+        response.EnsureSuccessStatusCode();
+    }
 
     public async Task DeleteItemAsync(string id)
-        => await _http.DeleteAsync($"api/Items/{id}");
+    {
+        var response = await _httpClient.DeleteAsync($"api/Items/{id}");
+        response.EnsureSuccessStatusCode();
+    }
 }
