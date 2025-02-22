@@ -11,7 +11,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowBlazor",
-        policy => policy.WithOrigins("https://localhost:7093") // Adjust based on your Blazor Server URL
+        policy => policy.WithOrigins("https://localhost:7093", "https://localhost:7094") // Adjust based on your Blazor Server URL
                         .AllowAnyMethod()
                         .AllowAnyHeader());
 });

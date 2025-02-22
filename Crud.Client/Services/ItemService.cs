@@ -1,6 +1,7 @@
 ﻿using System.Net.Http.Json;
+using Crud.Client.Services.Contracts;
 
-public class ItemService
+public class ItemService : IItemService
 {
     private readonly HttpClient _httpClient;
 
@@ -32,4 +33,14 @@ public class ItemService
         var response = await _httpClient.DeleteAsync($"api/Items/{id}");
         response.EnsureSuccessStatusCode();
     }
+
+    public async Task<string> GetConn()
+    {
+        var response = await _httpClient.GetAsync("api/testConn/getdata");
+        response.EnsureSuccessStatusCode();
+
+        var content = await response.Content.ReadAsStringAsync();
+        return content;
+    }
+
 }
